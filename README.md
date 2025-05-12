@@ -24,4 +24,5 @@ Usage: findin "Regex file pattern" "Regex string pattern" -recurse -quiet -count
 Two companion functions are also provided:
 
 GetHeader ## - to view the first ## (default set to 100) characters of a file
+
 GetLine ## - to view a specific line # of a file
