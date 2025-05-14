@@ -83,11 +83,11 @@ Write-Host -f Green "`n$($matchesFound.Count) match(es) found."}}}
 if ($summary) {Write-Host -f Yellow ("-"*100); Write-Host -f Green "Summary: $totalMatches match(es) across $filesChecked file(s)."}; ""}}
 
 function getheader ($file,[int]$number = 500) {# Get the header of a file for the specified number of characters
-""; Write-Host -ForegroundColor Yellow ("-"*100); Write-Host -ForegroundColor Yellow "`nFile header: $file for $number characters:`n"; (Get-Content $file -Raw).Substring(0,$number); Write-Host -ForegroundColor Yellow ("-"*100); ""}
+""; if (-not $file) {Write-Host -f cyan "Usage: getheader `"filename`" ##`n"; return}; Write-Host -ForegroundColor Yellow ("-"*100); Write-Host -ForegroundColor Yellow "`nFile header: $file for $number characters:`n"; (Get-Content $file -Raw).Substring(0,$number); Write-Host -ForegroundColor Yellow ("-"*100); ""}
 sal -Name header -Value getheader
 
 function getline($file,[int]$linenumber){# Output a specific line number from a file to the screen and copy it to the clipboard.
-""; if (Test-Path $file -ErrorAction SilentlyContinue) {$filearray = gc $file
+""; if (-not $file) {Write-Host -f cyan "Usage: getline `"filename`" ##`n"; return};  if (Test-Path $file -ErrorAction SilentlyContinue) {$filearray = gc $file
 if ($linenumber -gt $filearray.Count){$lines = $filearray.Count; Write-Host -ForegroundColor Green "$file only has $lines lines."}
 else {Write-Host -ForegroundColor Cyan "$($filearray[$linenumber - 1])"; $filearray[$linenumber - 1] | Set-Clipboard}}
 else {Write-Host -ForegroundColor Green "$file is not a valid filename."}; ""}
