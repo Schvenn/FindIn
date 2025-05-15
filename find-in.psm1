@@ -1,6 +1,8 @@
 function findin {# Find strings in file patterns matching a regex pattern, recursively.
 param([string]$filePattern, [string]$string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$help, [switch]$load, [switch]$header, [int]$characters = 500)
 
+if (-not $load -and -not $help -and -not $filepattern) {$help = $true}
+
 # Use one of the saved search patterns.
 if ($load) {$findinFile = "$PSScriptRoot\findin.txt"
 if (-not (Test-Path $findinFile)) {Write-Host -f Red "`nError: Saved search file 'find-in.txt' not found.`n"; return}
