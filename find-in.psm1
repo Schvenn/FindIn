@@ -1,5 +1,5 @@
 function findin {# Find strings in file patterns matching a regex pattern, recursively.
-param([string]$filePattern, [string]$string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help)
+param([string]$filePattern, [string]$script:string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help)
 
 if (-not $load -and -not $help -and -not $filepattern) {$help = $true}
 
@@ -12,7 +12,7 @@ Write-Host -f yellow "`nSaved Searches:`n"
 for ($i=0; $i -lt $savedSearches.Count; $i++) {Write-Host -f cyan "$($i+1). $($savedSearches[$i].Name)"}
 $selection = Read-Host "`nEnter the number of the search to run"
 if ($selection -match '^\d+$') {$selection = [int]$selection
-if ($selection -gt 0 -and $selection -le $savedSearches.Count) {$string = $savedSearches[$selection - 1].Pattern; Write-Host -f green "`nLoaded pattern: " -n; Write-Host -f white $string}
+if ($selection -gt 0 -and $selection -le $savedSearches.Count) {$script:string = $savedSearches[$selection - 1].Pattern; Write-Host -f green "`nLoaded pattern: " -n; Write-Host -f white $script:string}
 else {Write-Host -f red "`nInvalid selection. Exiting.`n"; return}}
 else {Write-Host -f red "`nInvalid selection. Exiting.`n"; return}}
 
@@ -56,7 +56,7 @@ Write-Host -f yellow "-summary".PadRight(10) -n; Write-Host -f white " to provid
 Write-Host -f yellow "-load".PadRight(10) -n; Write-Host -f white " to load a regex string from the saved options in the find-in.txt file"
 Write-Host -f yellow "-add".PadRight(10) -n; Write-Host -f white " to save a new Regex pattern to the find-in.txt file"
 Write-Host -f yellow "-remove".PadRight(10) -n; Write-Host -f white " to remove a Regex pattern from the find-in.txt file"
-Write-Host -f yellow "-viewer".PadRight(10) -n; Write-Host -f white " to pass the files with matches to the internal artifact viewer interface"
+Write-Host -f yellow "-viewer".PadRight(10) -n; Write-Host -f white " to pass the files with matches to the internal artifact viewer interface, retaining the search terms"
 Write-Host -f yellow "-help".PadRight(10) -n; Write-Host -f white " to display this screen`n"; return}
 
 $base=Split-Path $filePattern -Parent; if (!$base) {$base="."; $filePattern=(Split-Path $filePattern -Leaf)}; $files=Get-ChildItem -Path $base -File -Recurse:($recurse.IsPresent) -ErrorAction SilentlyContinue | Where-Object {$_.Name -match $filePattern}; $totalMatches=0; $filesChecked=0; $context=if ($long) {80} else {40}; ""
@@ -65,7 +65,7 @@ $base=Split-Path $filePattern -Parent; if (!$base) {$base="."; $filePattern=(Spl
 if ($files.Count -eq 0) {Write-Host -f red "`nNo files match pattern '$filePattern'.`n"} 
 
 # Begin searching through each file.
-else {$matchedFiles = @(); foreach ($file in $files) {$filesChecked++; $matchesFound=Select-String -Path $file.FullName -Pattern "(?i)$string" -AllMatches
+else {$matchedFiles = @(); foreach ($file in $files) {$filesChecked++; $matchesFound=Select-String -Path $file.FullName -Pattern "(?i)$script:string" -AllMatches
 
 # Create an array of matching files
 if ($matchesFound) {$matchedFiles += $file.FullName}
@@ -89,12 +89,12 @@ Write-Host -f green "`n$($matchesFound.Count) match(es) found."}}}
 if ($summary) {Write-Host -f yellow ("-"*100); Write-Host -f green "Summary: $totalMatches match(es) in $($matchedfiles.count) of $filesChecked file(s)."}; ""}
 
 # Output array.
-if ($fileviewer) {Write-Host -f yellow "Are you ready to open the ArtifactViewer to investigate these files? (Y/N)" -n; $ready = Read-Host " "
+if ($viewer) {Write-Host -f yellow "Are you ready to open the ArtifactViewer to investigate these files? (Y/N)" -n; $ready = Read-Host " "
 if ($ready -match "(?i)Y") {artifactviewer -filearray $matchedFiles}
 else {Write-Host -f red "Cancelled.`n"}}}
 
 function artifactviewer ([string[]]$filearray) {# ArtifactViewer.
-$script:viewfile = $viewfile; $script:viewfilearray = $filearray; ""
+$script:viewfile = $viewfile; $script:viewfilearray = $filearray; ""; $searchTerm = $script:string; $pattern = "(?i)" + [regex]::Escape($searchTerm); $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern}); $currentSearchIndex = $searchHits | Where-Object {$_ -gt $pos} | Select-Object -First 1; $pos = $currentSearchIndex
 
 # File array selection menu
 function filemenu_virtual ($script:viewfilearray) {$page = 0; $perpage = 30; $script:viewfile = $null; $errormessage = $null
@@ -241,7 +241,7 @@ Exit Commands:
 	-load      to load a regex string from the saved options in the find-in.txt file
 	-add       to save a new Regex pattern to the find-in.txt file
 	-remove    to remove a Regex pattern from the find-in.txt file
-	-viewer    to pass the files with matches to the internal artifact viewer interface
+	-viewer    to pass the files with matches to the internal artifact viewer interface, retaining the search terms
 	-help      to display this screen
 	
 ## getheader
