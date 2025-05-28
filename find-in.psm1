@@ -1,5 +1,5 @@
 function findin {# Find strings in file patterns matching a regex pattern, recursively.
-param([string]$filePattern, [string]$string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$fileviewer, [switch]$help)
+param([string]$filePattern, [string]$string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help)
 
 if (-not $load -and -not $help -and -not $filepattern) {$help = $true}
 
@@ -46,16 +46,17 @@ else {Write-Host -f red "`nError: Could not find the exact line to remove.`n"}}
 else {Write-Host -f red "`nInvalid selection. Exiting.`n"}; return}
 
 # Display the help screen.
-if ($help) {Write-Host -f white "`nUsage: " -n; Write-Host -f yellow "findin `"Regex file pattern`" `"Regex string pattern`" -recurse -quiet -countonly -long -summary -load -list -add -remove -help`n"; 
-Write-Host -f yellow "-recurse".PadRight(10) -n; Write-Host -f white " to look recursively through the directory structure"; 
-Write-Host -f yellow "-quiet".PadRight(10) -n; Write-Host -f white " to suppress the messages for files where no matching pattern was found"; 
-Write-Host -f yellow "-header ##".PadRight(10) -n; Write-Host -f white " to view the first ## (defaults to 500) characters of the file, when a match is found"; 
-Write-Host -f yellow "-countonly".PadRight(10) -n; Write-Host -f white " to provide the numeric results of matches found, but suppress the contextual matches found"; 
-Write-Host -f yellow "-long".PadRight(10) -n; Write-Host -f white " to provide an 80 character prefix and suffix for contextual matching, instead of 40"; 
-Write-Host -f yellow "-summary".PadRight(10) -n; Write-Host -f white " to provide a numerical summary"; 
-Write-Host -f yellow "-load".PadRight(10) -n; Write-Host -f white " to load a regex string from the saved options in the find-in.txt file"; 
-Write-Host -f yellow "-add".PadRight(10) -n; Write-Host -f white " to save a new Regex pattern to the find-in.txt file"; 
-Write-Host -f yellow "-remove".PadRight(10) -n; Write-Host -f white " to remove a Regex pattern from the find-in.txt file"; 
+if ($help) {Write-Host -f white "`nUsage: " -n; Write-Host -f yellow "findin `"Regex file pattern`" `"Regex string pattern`" -recurse -quiet -countonly -long -summary -load -list -add -remove -help`n"
+Write-Host -f yellow "-recurse".PadRight(10) -n; Write-Host -f white " to look recursively through the directory structure"
+Write-Host -f yellow "-quiet".PadRight(10) -n; Write-Host -f white " to suppress the messages for files where no matching pattern was found"
+Write-Host -f yellow "-header ##".PadRight(10) -n; Write-Host -f white " to view the first ## (defaults to 500) characters of the file, when a match is found"
+Write-Host -f yellow "-countonly".PadRight(10) -n; Write-Host -f white " to provide the numeric results of matches found, but suppress the contextual matches found"
+Write-Host -f yellow "-long".PadRight(10) -n; Write-Host -f white " to provide an 80 character prefix and suffix for contextual matching, instead of 40"
+Write-Host -f yellow "-summary".PadRight(10) -n; Write-Host -f white " to provide a numerical summary"
+Write-Host -f yellow "-load".PadRight(10) -n; Write-Host -f white " to load a regex string from the saved options in the find-in.txt file"
+Write-Host -f yellow "-add".PadRight(10) -n; Write-Host -f white " to save a new Regex pattern to the find-in.txt file"
+Write-Host -f yellow "-remove".PadRight(10) -n; Write-Host -f white " to remove a Regex pattern from the find-in.txt file"
+Write-Host -f yellow "-viewer".PadRight(10) -n; Write-Host -f white " to pass the files with matches to the internal artifact viewer interface"
 Write-Host -f yellow "-help".PadRight(10) -n; Write-Host -f white " to display this screen`n"; return}
 
 $base=Split-Path $filePattern -Parent; if (!$base) {$base="."; $filePattern=(Split-Path $filePattern -Leaf)}; $files=Get-ChildItem -Path $base -File -Recurse:($recurse.IsPresent) -ErrorAction SilentlyContinue | Where-Object {$_.Name -match $filePattern}; $totalMatches=0; $filesChecked=0; $context=if ($long) {80} else {40}; ""
@@ -240,6 +241,7 @@ Exit Commands:
 	-load      to load a regex string from the saved options in the find-in.txt file
 	-add       to save a new Regex pattern to the find-in.txt file
 	-remove    to remove a Regex pattern from the find-in.txt file
+	-viewer    to pass the files with matches to the internal artifact viewer interface
 	-help      to display this screen
 	
 ## getheader
