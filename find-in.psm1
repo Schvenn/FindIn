@@ -100,7 +100,7 @@ $script:viewfile = $viewfile; $script:viewfilearray = $filearray; ""; $searchTer
 function filemenu_virtual ($script:viewfilearray) {$page = 0; $perpage = 30; $script:viewfile = $null; $errormessage = $null
 while ($true) {cls; $input = $null; $entryIndex = $null; $sel = $null
 Write-Host -f cyan "Search Results (Page $($page + 1))`n"; $startIndex = $page * $perpage; $endIndex = [Math]::Min(($page + 1) * $perpage - 1, $script:viewfilearray.Count - 1); $paged = $script:viewfilearray[$startIndex..$endIndex]; $optionCount = 0
-for ($i = 0; $i -lt $paged.Count; $i++) {$optionCount++; $name = Split-Path -Leaf $paged[$i]; Write-Host "$optionCount. $name" -f White}
+for ($i = 0; $i -lt $paged.Count; $i++) {$optionCount++; $name = Split-Path -Leaf $paged[$i]; Write-Host -f white "$optionCount. $name" -n; $sizeKB = try {[math]::Round(((Get-Item $paged[$i]).Length + 500) / 1KB, 0)} catch {" "}; Write-Host -f white " [$sizeKB KB]"}
 if (($page + 1) * $perpage -lt $script:viewfilearray.Count) {$optionCount++; Write-Host "$optionCount. NEXT..." -f Cyan}
 Write-Host -f red "`n$errormessage"; Write-Host -f White "Make a selection or press Enter" -n; $input = Read-Host " "
 if (-not $input) {return}
