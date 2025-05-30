@@ -94,7 +94,7 @@ if ($ready -match "(?i)Y") {artifactviewer -filearray $matchedFiles}
 else {Write-Host -f red "Cancelled.`n"}}}
 
 function artifactviewer ([string[]]$filearray) {# ArtifactViewer.
-$script:viewfile = $viewfile; $script:viewfilearray = $filearray; ""; $searchTerm = $script:string; $pattern = "(?i)" + [regex]::Escape($searchTerm); $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern}); $currentSearchIndex = $searchHits | Where-Object {$_ -gt $pos} | Select-Object -First 1; $pos = $currentSearchIndex
+""; $script:viewfile = $viewfile; $script:viewfilearray = $filearray; $searchTerm = $script:string; $pattern = "(?i)$script:string"; $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern}); $currentSearchIndex = $searchHits | Where-Object {$_ -gt $pos} | Select-Object -First 1; $pos = $currentSearchIndex
 
 # File array selection menu
 function filemenu_virtual ($script:viewfilearray) {$page = 0; $perpage = 30; $script:viewfile = $null; $errormessage = $null
@@ -123,7 +123,7 @@ $separators = @(0) + (0..($content.Count - 1) | Where-Object {$content[$_] -matc
 
 function Get-BreakPoint {param($start), $maxEnd = [Math]::Min($start + $pageSize - 1, $content.Count - 1); for ($i = $start + 29; $i -le $maxEnd; $i++) {if ($content[$i] -match '^[-=]{100}$') {return $i}}; return $maxEnd}
 
-function Show-Page {cls; $start = $pos; $end = Get-BreakPoint $start; $pageLines = $content[$start..$end]; $highlight = if ($searchTerm) {"(?i)" + [regex]::Escape($searchTerm)} else {$null}
+function Show-Page {cls; $start = $pos; $end = Get-BreakPoint $start; $pageLines = $content[$start..$end]; $highlight = if ($searchTerm) {$pattern} else {$null}
 foreach ($line in $pageLines) {if ($line -match '^[-=]{100}$') {Write-Host -f Yellow $line}
 elseif ($highlight -and $line -match $highlight) {$parts = [regex]::Split($line, "($highlight)")
 foreach ($part in $parts) {if ($part -match "^$highlight$") {Write-Host -f black -b yellow $part -n}
@@ -170,7 +170,7 @@ if ($null -eq $currentSearchIndex -and $searchHits -ne @()) {$currentSearchIndex
 $pos = $currentSearchIndex}
 'S' {Write-Host -f green "Keyword to search forward from this point in the logs" -n; $searchTerm = Read-Host " "
 if (-not $searchTerm) {$errormessage = "No keyword entered."; $searchTerm = $null; $searchHits = @(); break}
-$pattern = "(?i)" + [regex]::Escape($searchTerm); $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern})
+$pattern = "(?i)$searchTerm"; $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern})
 if (-not $searchHits) {$errormessage = "Keyword not found in file."; $searchHits = @(); $currentSearchIndex = -1}
 $currentSearchIndex = $searchHits | Where-Object {$_ -gt $pos} | Select-Object -First 1
 if ($null -eq $currentSearchIndex) {Write-Host -f green "No match found after this point. Jump to first match? (Y/N)" -n; $wrap = Read-Host " "
