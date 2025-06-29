@@ -2,9 +2,13 @@ function findin {# Find strings in file patterns matching a regex pattern, recur
 param([string]$filePattern, [string]$script:string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help, [switch]$modulehelp)
 
 if ($modulehelp) {# Inline help.
-function wordwrap ($field, [int]$maximumlinelength = 65) {# Modify fields sent to it with proper word wrapping.
-if ($null -eq $field -or $field.Length -eq 0) {return $null}
+# Modify fields sent to it with proper word wrapping.
+function wordwrap ($field, $maximumlinelength) {if ($null -eq $field -or $field.Length -eq 0) {return $null}
 $breakchars = ',.;?!\/ '; $wrapped = @()
+
+if (-not $maximumlinelength) {[int]$maximumlinelength = (100, $Host.UI.RawUI.WindowSize.Width | Measure-Object -Maximum).Maximum}
+if ($maximumlinelength) {if ($maximumlinelength -lt 60) {[int]$maximumlinelength = 60}
+if ($maximumlinelength -gt $Host.UI.RawUI.BufferSize.Width) {[int]$maximumlinelength = $Host.UI.RawUI.BufferSize.Width}}
 
 foreach ($line in $field -split "`n") {if ($line.Trim().Length -eq 0) {$wrapped += ''; continue}
 $remaining = $line.Trim()
@@ -39,7 +43,7 @@ if (-not $load -and -not $help -and -not $filepattern) {$help = $true}
 # Use one of the saved search patterns.
 if ($load) {$findinFile = "$PSScriptRoot\findin.txt"
 if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'find-in.txt' not found.`n"; return}
-$savedSearches = Get-Content $findinFile | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {$matchName = $matches[1]; $matchPattern = $matches[2]; [PSCustomObject]@{ Name = $matchName; Pattern = $matchPattern}}
+$savedSearches = Get-Content $findinFile | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {$matchName = $matches[1]; $matchPattern = $matches[2]; [PSCustomObject]@{Name = $matchName; Pattern = $matchPattern}}
 if (-not $savedSearches) {Write-Host -f yellow "`nWarning: No valid searches found in 'find-in.txt'.`n"; return}
 Write-Host -f yellow "`nSaved Searches:`n"
 for ($i=0; $i -lt $savedSearches.Count; $i++) {Write-Host -f cyan "$($i+1). $($savedSearches[$i].Name)"}
@@ -68,7 +72,7 @@ Write-Host -f green "`nSaved '$name' to find-in.txt.`n"; return}
 # Remove a saved search pattern.
 if ($remove) {$findinFile = "$PSScriptRoot\find-in.txt"
 if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'find-in.txt' not found.`n"; return}
-$lines = [System.Collections.Generic.List[string]]@(Get-Content $findinFile); $entries = $lines | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {[PSCustomObject]@{ Name = $matches[1]; Pattern = $matches[2] }}
+$lines = [System.Collections.Generic.List[string]]@(Get-Content $findinFile); $entries = $lines | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {[PSCustomObject]@{Name = $matches[1]; Pattern = $matches[2]}}
 if (-not $entries) {Write-Host -f yellow "`nWarning: No valid searches found in 'find-in.txt'.`n"; return}
 Write-Host -f yellow "`nSaved Searches:`n"; for ($i = 0; $i -lt $entries.Count; $i++) {Write-Host -f cyan "$($i+1). $($entries[$i].Name.PadRight(30))" -n; Write-Host -f white $entries[$i].Pattern}
 $choice = Read-Host "`nEnter the number of the entry to remove"
@@ -99,7 +103,17 @@ $base=Split-Path $filePattern -Parent; if (!$base) {$base="."; $filePattern=(Spl
 if ($files.Count -eq 0) {Write-Host -f red "`nNo files match pattern '$filePattern'.`n"} 
 
 # Begin searching through each file.
-else {$matchedFiles = @(); foreach ($file in $files) {$filesChecked++; $matchesFound=Select-String -Path $file.FullName -Pattern "(?i)$script:string" -AllMatches
+else {$matchedFiles = @(); $script:gzLineCounter = 0; foreach ($file in $files) {$filesChecked++
+
+# Handle GZip files.
+if ($file.Extension -eq ".gz") {try {$stream = [System.IO.File]::OpenRead($file.FullName); $gzip = New-Object System.IO.Compression.GzipStream($stream, [System.IO.Compression.CompressionMode]::Decompress); $reader = New-Object System.IO.StreamReader($gzip); $content = $reader.ReadToEnd(); $reader.Close(); $gzip.Close(); $stream.Close()
+$matchesFound = $content -split "`r?`n" | ForEach-Object {$line = $_; $lineNum = $null
+if ($line -match "(?i)$script:string") {$lineNum = ++$script:gzLineCounter; $mockMatch = [PSCustomObject]@{LineNumber = $lineNum; Line = $line; Matches = [regex]::Matches($line, "(?i)$script:string")}
+return $mockMatch}} | Where-Object {$_ -ne $null}}
+catch {Write-Host -f red "Failed to read: $($file.FullName)"}}
+
+# Handle plaintext files.
+else {$matchesFound = Select-String -Path $file.FullName -Pattern "(?i)$script:string" -AllMatches}
 
 # Create an array of matching files
 if ($matchesFound) {$matchedFiles += $file.FullName}
@@ -149,8 +163,13 @@ filemenu_virtual $script:viewfilearray
 if (-not (Test-Path $script:viewfile -PathType Leaf -ErrorAction SilentlyContinue) -or (-not $script:viewfile)) {Write-Host -f red "`nNo file provided.`n"; return}
 if (-not (Test-Path $script:viewfile)) {Write-Host -f red "`nFile not found.`n"; return}
 
-# Read log content once
-$content = Get-Content $script:viewfile
+# Read GZip files.
+if ($script:viewfile -like "*.gz") {try {$stream = [System.IO.File]::OpenRead($script:viewfile); $gzip = New-Object System.IO.Compression.GzipStream($stream, [System.IO.Compression.CompressionMode]::Decompress); $reader = New-Object System.IO.StreamReader($gzip); $rawText = $reader.ReadToEnd(); $reader.Close(); $gzip.Close(); $stream.Close(); $content = $rawText -split "`r?`n"}
+catch {Write-Host -f red "`nFailed to read compressed file: $script:viewfile`n"; return}}
+
+# Read plaintext files.
+else {$content = Get-Content $script:viewfile}
+
 if (-not $content) {Write-Host -f red "`nFile is empty.`n"; return}
 
 $separators = @(0) + (0..($content.Count - 1) | Where-Object {$content[$_] -match '^[=]{100}$'}); $pageSize = 35; $pos = 0; $script:viewfileName = [System.IO.Path]::GetFileName($script:viewfile); $searchHits = @(); $currentSearchIndex = -1
