@@ -142,7 +142,7 @@ if ($ready -match "(?i)Y") {artifactviewer -filearray $matchedFiles}
 else {Write-Host -f red "Cancelled.`n"}}}
 
 function artifactviewer ([string[]]$filearray) {# ArtifactViewer.
-""; $script:viewfile = $viewfile; $script:viewfilearray = $filearray; $searchTerm = $script:string; $pattern = "(?i)$script:string"; $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern}); $currentSearchIndex = $searchHits | Where-Object {$_ -gt $pos} | Select-Object -First 1; $pos = $currentSearchIndex
+""; $script:viewfile = $viewfile; $script:viewfilearray = $filearray; 
 
 # File array selection menu
 function filemenu_virtual ($script:viewfilearray) {$page = 0; $perpage = 30; $script:viewfile = $null; $errormessage = $null
@@ -172,7 +172,8 @@ else {$content = Get-Content $script:viewfile}
 
 if (-not $content) {Write-Host -f red "`nFile is empty.`n"; return}
 
-$separators = @(0) + (0..($content.Count - 1) | Where-Object {$content[$_] -match '^[=]{100}$'}); $pageSize = 35; $pos = 0; $script:viewfileName = [System.IO.Path]::GetFileName($script:viewfile); $searchHits = @(); $currentSearchIndex = -1
+$searchTerm = $script:string; $pattern = "(?i)$script:string"; $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern}); $currentSearchIndex = $searchHits[0]; $pos = 0
+$separators = @(0) + (0..($content.Count - 1) | Where-Object {$content[$_] -match '^[=]{100}$'}); $pageSize = 35; $script:viewfileName = [System.IO.Path]::GetFileName($script:viewfile)
 
 function Get-BreakPoint {param($start), $maxEnd = [Math]::Min($start + $pageSize - 1, $content.Count - 1); for ($i = $start + 29; $i -le $maxEnd; $i++) {if ($content[$i] -match '^[-=]{100}$') {return $i}}; return $maxEnd}
 
@@ -189,39 +190,51 @@ if ($linesShown -lt $pageSize) {for ($i = 1; $i -le ($pageSize - $linesShown); $
 
 $errormessage = ""; $searchmessage = "Search Commands"
 # Main menu loop
+
 while ($true) {Show-Page; $pageNum = [math]::Floor($pos / $pageSize) + 1; $totalPages = [math]::Ceiling($content.Count / $pageSize)
-if ($searchHits.Count -gt 0) {$currentMatch = ($searchHits | Where-Object {$_ -eq $pos} | ForEach-Object {[array]::IndexOf($searchHits, $_) + 1})
-if ($currentMatch) {$searchmessage = "Match $currentMatch of $($searchHits.Count)"}}
+if ($searchHits.Count -gt 0) {$currentMatch = [array]::IndexOf($searchHits, $pos); if ($currentMatch -ge 0) {$searchmessage = "Match $($currentMatch + 1) of $($searchHits.Count)"}
+else {$searchmessage = "Search active ($($searchHits.Count) matches)"}}
 Write-Host ""; Write-Host -f yellow ("=" * 120)
+
 $left = "$script:viewfileName".PadRight(57); $middle = "$errormessage".PadRight(44); $right = "(Page $pageNum of $totalPages)"
 Write-Host -f white $left -n; Write-Host -f red $middle -n; Write-Host -f cyan $right
-$left = "Page Commands".PadRight(55); $middle = "| $searchmessage ".PadRight(35); $right = "| Exit Commands"
+$left = "Page Commands".PadRight(55); $middle = "| $searchmessage ".PadRight(34); $right = "| Exit Commands"
 Write-Host -f yellow ($left + $middle + $right)
-Write-Host -f yellow "[F]irst [N]ext [+/-]# Lines p[A]ge # [P]revious [L]ast | [<][S]earch[>] [#]Number [C]lear | [D]ump [X]Edit [M]enu [Q]uit" -n; $action = Read-Host " "
+Write-Host -f yellow "[F]irst [N]ext [+/-]# Lines p[A]ge # [P]revious [L]ast | [<][S]earch[>] [#]Match [C]lear | [D]ump [X]Edit [M]enu [Q]uit " -n
+
 $errormessage = ""; $searchmessage = "Search Commands"
 
-if ($action -match '^[+-]?\d+$') {$offset = [int]$action; $newPos = $pos + $offset; $pos = [Math]::Max(0, [Math]::Min($newPos, $content.Count - $pageSize))}
+function getaction {[string]$buffer = ""
+while ($true) {$key = [System.Console]::ReadKey($true)
+switch ($key.Key) {'LeftArrow' {return 'P'}
+'UpArrow' {return 'P'}
+'Backspace' {return 'P'}
+'PageUp' {return 'P'}
+'RightArrow' {return 'N'}
+'DownArrow' {return 'N'}
+'PageDown' {return 'N'}
+'Enter' {if ($buffer) {return $buffer}
+else {return 'N'}}
+'Home' {return 'F'}
+'End' {return 'L'}
+default {$char = $key.KeyChar
+switch ($char) {',' {return '<'}
+'.' {return '>'}
+{$_ -match '(?i)[B-Z]'} {return $char.ToString().ToUpper()}
+{$_ -match '[A#\+\-\d]'} {$buffer += $char}
+default {$buffer = ""}}}}}}
 
-if ($action -match '^#([+-]?\d+)$') {$jump = [int]$matches[1]
-if (-not $searchHits -or $searchHits.Count -eq 0) {$errormessage = "No search in progress."}
-else {if ($jump -ge 1 -or $jump -le -1) {$targetIndex = if ($jump -lt 0) {[Math]::Max(0, $currentSearchIndex + $jump)} 
-else {$jump - 1}
-if ($targetIndex -ge 0 -and $targetIndex -lt $searchHits.Count) {$pos = $searchHits[$targetIndex]; $errormessage = "Jumped to match #$($targetIndex + 1)."} 
-else {$errormessage = "Match #$jump is out of range."}} 
-else {$pos = $searchHits[0]; $errormessage = "Jumped to first match."}}}
+$action = getaction
 
-if ($action -match '^A(\d+)$') {$requestedPage = [int]$matches[1]
-if ($requestedPage -lt 1 -or $requestedPage -gt $totalPages) {$errormessage = "Page #$requestedPage is out of range."}
-else {$pos = ($requestedPage - 1) * $pageSize}}
-
-switch ($action.ToUpper()) {'F' {$pos = 0}
-'N' {$next = Get-BreakPoint $pos; if ($next -lt $content.Count - 1) {$pos = $next + 1} else {$pos = [Math]::Min($pos + $pageSize, $content.Count - 1)}}
+switch ($action.ToString().ToUpper()) {'F' {$pos = 0}
+'N' {$next = Get-BreakPoint $pos; if ($next -lt $content.Count - 1) {$pos = $next + 1}
+else {$pos = [Math]::Min($pos + $pageSize, $content.Count - 1)}}
 'P' {$pos = [Math]::Max(0, $pos - $pageSize)}
 'L' {$lastPageStart = [Math]::Max(0, [int][Math]::Floor(($content.Count - 1) / $pageSize) * $pageSize); $pos = $lastPageStart}
 '<' {$currentSearchIndex = ($searchHits | Where-Object {$_ -lt $pos} | Select-Object -Last 1)
 if ($null -eq $currentSearchIndex -and $searchHits -ne @()) {$currentSearchIndex = $searchHits[-1]; $errormessage = "Wrapped to last match."}
 $pos = $currentSearchIndex}
-'S' {Write-Host -f green "Keyword to search forward from this point in the logs" -n; $searchTerm = Read-Host " "
+'S' {Write-Host -f green "`n`nKeyword to search forward from this point in the logs" -n; $searchTerm = Read-Host " "
 if (-not $searchTerm) {$errormessage = "No keyword entered."; $searchTerm = $null; $searchHits = @(); break}
 $pattern = "(?i)$searchTerm"; $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern})
 if (-not $searchHits) {$errormessage = "Keyword not found in file."; $searchHits = @(); $currentSearchIndex = -1}
@@ -234,11 +247,26 @@ $pos = $currentSearchIndex}
 if ($null -eq $currentSearchIndex -and $searchHits -ne @()) {$currentSearchIndex = $searchHits[0]; $errormessage = "Wrapped to first match."}
 $pos = $currentSearchIndex}
 'C' {$searchTerm = $null; $searchHits.Count = 0; $searchHits = @(); $currentSearchIndex = $null}
-'D' {""; gc $script:viewfile | more; return}
-'X' {edit $script:viewfile; "" ; return}
+'D' {""; gc $script:file | more; return}
+'X' {edit $script:file; "" ; return}
 'M' {artifactviewer -filearray $script:viewfilearray; return}
-'Q' {""; return}
-default {Write-Host -f red "`nInvalid input.`n"}}}}
+'Q' {"`n"; return}
+
+default {if ($action -match '^[\+\-](\d+)$') {$offset = [int]$action; $newPos = $pos + $offset; $pos = [Math]::Max(0, [Math]::Min($newPos, $content.Count - $pageSize))}
+
+elseif ($action -match '^(\d+)$') {$jump = [int]$matches[1]
+if (-not $searchHits -or $searchHits.Count -eq 0) {$errormessage = "No search in progress."}
+else {if ($jump -ge 1 -or $jump -le -1) {$targetIndex = if ($jump -lt 0) {[Math]::Max(0, $currentSearchIndex + $jump)} 
+else {$jump - 1}
+if ($targetIndex -ge 0 -and $targetIndex -lt $searchHits.Count) {$pos = $searchHits[$targetIndex]; $errormessage = "Jumped to match #$($targetIndex + 1)."} 
+else {$errormessage = "Match #$jump is out of range."}} 
+else {$pos = $searchHits[0]; $errormessage = "Jumped to first match."}}}
+
+elseif ($action -match '^A(\d+)$') {$requestedPage = [int]$matches[1]
+if ($requestedPage -lt 1 -or $requestedPage -gt $totalPages) {$errormessage = "Page #$requestedPage is out of range."}
+else {$pos = ($requestedPage - 1) * $pageSize}}
+
+else {Write-Host -f red "`nInvalid input.`n"}}}}}
 
 function getheader ($file,[int]$number = 500) {# Get the header of a file for the specified number of characters
 ""; if (-not $file) {Write-Host -f cyan "Usage: getheader `"filename`" ##`n"; return}; Write-Host -f yellow ("-"*100); Write-Host -f yellow "`nFile header: $file for $number characters:`n"; (Get-Content $file -Raw).Substring(0,$number); Write-Host -f yellow ("-"*100); ""}
