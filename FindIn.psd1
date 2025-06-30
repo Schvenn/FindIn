@@ -1,0 +1,21 @@
+@{
+RootModule = 'Findin.psm1'
+ModuleVersion = '3.1'
+GUID = '2bfb6cfc-8c62-4e9f-9f1b-2e5c61709a6e'
+Author = 'Schvenn'
+CompanyName = 'Plath Consulting Incorporated'
+Copyright = '(c) Craig Plath. All rights reserved.'
+Description = 'Advanced regex-based file search tool with pattern loading, optional recursion, context display, gzip support, and integration with a custom viewer.'
+PowerShellVersion = '5.1'
+FunctionsToExport = @('findin','getheader','getline') <---------------
+CmdletsToExport = @()
+VariablesToExport = @()
+AliasesToExport = @('header')
+FileList = @('Findin.psm1', 'license.txt', 'findin.txt')
+PrivateData = @{
+PSData = @{
+Tags = @('regex','search','log','artifact','viewer','gzip','forensics','PowerShell','find','security','SOC','cybersecurity')
+LicenseUri = 'https://github.com/Schvenn/FindIn/blob/main/License.txt'
+ProjectUri = 'https://github.com/Schvenn/FindIn'
+ReleaseNotes = 'Initial gallery release. Includes full integration with artifactviewer and pattern loading system.'
+}}}
