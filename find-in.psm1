@@ -1,27 +1,32 @@
 function findin {# Find strings in file patterns matching a regex pattern, recursively.
 param([string]$filePattern, [string]$script:string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help, [switch]$modulehelp)
 
-if ($modulehelp) {# Inline help.
 # Modify fields sent to it with proper word wrapping.
-function wordwrap ($field, $maximumlinelength) {if ($null -eq $field -or $field.Length -eq 0) {return $null}
+function wordwrap ($field, $maximumlinelength) {if ($null -eq $field) {return $null}
 $breakchars = ',.;?!\/ '; $wrapped = @()
-
 if (-not $maximumlinelength) {[int]$maximumlinelength = (100, $Host.UI.RawUI.WindowSize.Width | Measure-Object -Maximum).Maximum}
-if ($maximumlinelength) {if ($maximumlinelength -lt 60) {[int]$maximumlinelength = 60}
-if ($maximumlinelength -gt $Host.UI.RawUI.BufferSize.Width) {[int]$maximumlinelength = $Host.UI.RawUI.BufferSize.Width}}
-
-foreach ($line in $field -split "`n") {if ($line.Trim().Length -eq 0) {$wrapped += ''; continue}
-$remaining = $line.Trim()
+if ($maximumlinelength -lt 60) {[int]$maximumlinelength = 60}
+if ($maximumlinelength -gt $Host.UI.RawUI.BufferSize.Width) {[int]$maximumlinelength = $Host.UI.RawUI.BufferSize.Width}
+foreach ($line in $field -split "`n", [System.StringSplitOptions]::None) {if ($line -eq "") {$wrapped += ""; continue}
+$remaining = $line
 while ($remaining.Length -gt $maximumlinelength) {$segment = $remaining.Substring(0, $maximumlinelength); $breakIndex = -1
-
 foreach ($char in $breakchars.ToCharArray()) {$index = $segment.LastIndexOf($char)
-if ($index -gt $breakIndex) {$breakChar = $char; $breakIndex = $index}}
-if ($breakIndex -lt 0) {$breakIndex = $maximumlinelength - 1; $breakChar = ''}
-$chunk = $segment.Substring(0, $breakIndex + 1).TrimEnd(); $wrapped += $chunk; $remaining = $remaining.Substring($breakIndex + 1).TrimStart()}
-
-if ($remaining.Length -gt 0) {$wrapped += $remaining}}
+if ($index -gt $breakIndex) {$breakIndex = $index}}
+if ($breakIndex -lt 0) {$breakIndex = $maximumlinelength - 1}
+$chunk = $segment.Substring(0, $breakIndex + 1); $wrapped += $chunk; $remaining = $remaining.Substring($breakIndex + 1)}
+if ($remaining.Length -gt 0 -or $line -eq "") {$wrapped += $remaining}}
 return ($wrapped -join "`n")}
 
+# Display a horizontal line.
+function line ($colour, $length, [switch]$pre, [switch]$post, [switch]$double) {if (-not $length) {[int]$length = (100, $Host.UI.RawUI.WindowSize.Width | Measure-Object -Maximum).Maximum}
+if ($length) {if ($length -lt 60) {[int]$length = 60}
+if ($length -gt $Host.UI.RawUI.BufferSize.Width) {[int]$length = $Host.UI.RawUI.BufferSize.Width}}
+if ($pre) {Write-Host ""}
+$character = if ($double) {"="} else {"-"}
+Write-Host -f $colour ($character * $length)
+if ($post) {Write-Host ""}}
+
+if ($modulehelp) {# Inline help.
 function scripthelp ($section) {# (Internal) Generate the help sections from the comments section of the script.
 ""; Write-Host -f yellow ("-" * 100); $pattern = "(?ims)^## ($section.*?)(##|\z)"; $match = [regex]::Match($scripthelp, $pattern); $lines = $match.Groups[1].Value.TrimEnd() -split "`r?`n", 2; Write-Host $lines[0] -f yellow; Write-Host -f yellow ("-" * 100)
 if ($lines.Count -gt 1) {wordwrap $lines[1] 100| Out-String | Out-Host -Paging}; Write-Host -f yellow ("-" * 100)}
@@ -173,13 +178,15 @@ else {$content = Get-Content $script:viewfile}
 if (-not $content) {Write-Host -f red "`nFile is empty.`n"; return}
 
 $searchTerm = $script:string; $pattern = "(?i)$script:string"; $searchHits = @(0..($content.Count - 1) | Where-Object {$content[$_] -match $pattern}); $currentSearchIndex = $searchHits[0]; $pos = 0
-$separators = @(0) + (0..($content.Count - 1) | Where-Object {$content[$_] -match '^[=]{100}$'}); $pageSize = 35; $script:viewfileName = [System.IO.Path]::GetFileName($script:viewfile)
 
-function getbreakpoint {param($start), $maxEnd = [Math]::Min($start + $pageSize - 1, $content.Count - 1); for ($i = $start + 29; $i -le $maxEnd; $i++) {if ($content[$i] -match '^[-=]{100}$') {return $i}}; return $maxEnd}
+$content = $content | ForEach-Object {wordwrap $_ $null} | ForEach-Object {$_ -split "`n"}
 
-function Show-Page {cls; $start = $pos; $end = getbreakpoint $start; $pageLines = $content[$start..$end]; $highlight = if ($searchTerm) {$pattern} else {$null}
-foreach ($line in $pageLines) {if ($line -match '^[-=]{100}$') {Write-Host -f Yellow $line}
-elseif ($highlight -and $line -match $highlight) {$parts = [regex]::Split($line, "($highlight)")
+$pageSize = 44; $script:viewfileName = [System.IO.Path]::GetFileName($script:viewfile)
+
+function getbreakpoint {param($start); return [Math]::Min($start + $pageSize - 1, $content.Count - 1)}
+
+function showpage {cls; $start = $pos; $end = getbreakpoint $start; $pageLines = $content[$start..$end]; $highlight = if ($searchTerm) {"$pattern"} else {$null}
+foreach ($line in $pageLines) {if ($highlight -and $line -match $highlight) {$parts = [regex]::Split($line, "($highlight)")
 foreach ($part in $parts) {if ($part -match "^$highlight$") {Write-Host -f black -b yellow $part -n}
 else {Write-Host -f white $part -n}}; ""}
 else {Write-Host -f white $line}}
@@ -190,10 +197,10 @@ if ($linesShown -lt $pageSize) {for ($i = 1; $i -le ($pageSize - $linesShown); $
 
 # Main menu loop
 $statusmessage = ""; $errormessage = ""; $searchmessage = "Search Commands"
-while ($true) {Show-Page; $pageNum = [math]::Floor($pos / $pageSize) + 1; $totalPages = [math]::Ceiling($content.Count / $pageSize)
+while ($true) {showpage; $pageNum = [math]::Floor($pos / $pageSize) + 1; $totalPages = [math]::Ceiling($content.Count / $pageSize)
 if ($searchHits.Count -gt 0) {$currentMatch = [array]::IndexOf($searchHits, $pos); if ($currentMatch -ge 0) {$searchmessage = "Match $($currentMatch + 1) of $($searchHits.Count)"}
 else {$searchmessage = "Search active ($($searchHits.Count) matches)"}}
-Write-Host ""; Write-Host -f yellow ("=" * 120)
+line yellow -double
 if (-not $errormessage -or $errormessage.length -lt 1) {$middlecolour = "white"; $middle = $statusmessage} else {$middlecolour = "red"; $middle = $errormessage}
 $left = "$script:fileName".PadRight(57); $middle = "$middle".PadRight(44); $right = "(Page $pageNum of $totalPages)"
 Write-Host -f white $left -n; Write-Host -f $middlecolour $middle -n; Write-Host -f cyan $right
@@ -205,11 +212,11 @@ $statusmessage = ""; $errormessage = ""; $searchmessage = "Search Commands"
 function getaction {[string]$buffer = ""
 while ($true) {$key = [System.Console]::ReadKey($true)
 switch ($key.Key) {'LeftArrow' {return 'P'}
-'UpArrow' {return 'P'}
+'UpArrow' {return 'U1L'}
 'Backspace' {return 'P'}
 'PageUp' {return 'P'}
 'RightArrow' {return 'N'}
-'DownArrow' {return 'N'}
+'DownArrow' {return 'D1L'}
 'PageDown' {return 'N'}
 'Enter' {if ($buffer) {return $buffer}
 else {return 'N'}}
@@ -253,6 +260,8 @@ if (-not $searchHits -or $searchHits.Count -eq 0) {$errormessage = "No search in
 'X' {edit $script:file; "" ; return}
 'M' {artifactviewer -filearray $script:viewfilearray; return}
 'Q' {"`n"; return}
+'U1L' {$pos = [Math]::Max($pos - 1, 0)}
+'D1L' {$pos = [Math]::Min($pos + 1, $content.Count - $pageSize)}
 
 default {if ($action -match '^[\+\-](\d+)$') {$offset = [int]$action; $newPos = $pos + $offset; $pos = [Math]::Max(0, [Math]::Min($newPos, $content.Count - $pageSize))}
 
@@ -290,27 +299,27 @@ Once inside the viewer, the options include:
 
 Navigation:
 
-	[F]irst page
-	[N]ext page
-	[+/-]# to move forward or back a specific # of lines
-	p[A]ge # to jump to a specific page
-	[P]revious page
-	[L]ast page
+[F]irst page / [HOME]
+[N]ext page / [PgDn] / [Right]
+[+/-]# to move forward or back a specific # of lines / [Down] / [Up]
+p[A]ge # to jump to a specific page
+[P]revious page / [PgUp] / [Left]
+[L]ast page / [END]
 
 Search:
 
-	[S]earch for a term
-	[<] Previous match
-	[>] Next match
-	[#]Number to find a specific match number
-	[C]lear search term
+[S]earch for a term
+[<] Previous match
+[>] Next match
+[#]Number to find a specific match number
+[C]lear search term
 
 Exit Commands:
 
-	[D]ump to screen with | MORE and Exit
-	[X]Edit using Notepad++, if available. Otherwise, use Notepad.
-	[M]enu to open the file selection menu
-	[Q]uit
+[D]ump to screen with | MORE and Exit
+[X]Edit using Notepad++, if available. Otherwise, use Notepad.
+[M]enu to open the file selection menu
+[Q]uit
 ## findin
 
 	Usage: findin "Regex file pattern" "Regex string pattern" -recurse -quiet -countonly -long -summary -load -list -add -remove -help
