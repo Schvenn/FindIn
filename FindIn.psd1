@@ -1,6 +1,6 @@
 @{
 RootModule = 'Findin.psm1'
-ModuleVersion = '3.1'
+ModuleVersion = '3.2'
 GUID = '2bfb6cfc-8c62-4e9f-9f1b-2e5c61709a6e'
 Author = 'Schvenn'
 CompanyName = 'Plath Consulting Incorporated'
