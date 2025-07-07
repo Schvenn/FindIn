@@ -293,56 +293,78 @@ Export-ModuleMember -Function findin, getheader, getline
 Export-ModuleMember -Alias header
 
 <#
-## artifactviewer
+## ArtifactViewer
 This integrated utility allows you to investigate each of the files with matching criteria inside an interactive file viewer.
 Once inside the viewer, the options include:
 
 Navigation:
 
-[F]irst page / [HOME]
-[N]ext page / [PgDn] / [Right]
-[+/-]# to move forward or back a specific # of lines / [Down] / [Up]
-p[A]ge # to jump to a specific page
-[P]revious page / [PgUp] / [Left]
-[L]ast page / [END]
+	[F]irst page / [HOME]
+	[N]ext page / [PgDn] / [Right]
+	[+/-]# to move forward or back a specific # of lines / [Down] / [Up]
+	p[A]ge # to jump to a specific page
+	[P]revious page / [PgUp] / [Left]
+	[L]ast page / [END]
 
 Search:
 
-[S]earch for a term
-[<] Previous match
-[>] Next match
-[#]Number to find a specific match number
-[C]lear search term
+	[S]earch for a term
+	[<] Previous match
+	[>] Next match
+	[#]Number to find a specific match number
+	[C]lear search term
 
 Exit Commands:
 
-[D]ump to screen with | MORE and Exit
-[X]Edit using Notepad++, if available. Otherwise, use Notepad.
-[M]enu to open the file selection menu
-[Q]uit
-## findin
+	[D]ump to screen with | MORE and Exit
+	[X]Edit using Notepad++, if available. Otherwise, use Notepad.
+	[M]enu to open the file selection menu
+	[Q]uit
+## FindIn
 
 	Usage: findin "Regex file pattern" "Regex string pattern" -recurse -quiet -countonly -long -summary -load -list -add -remove -help
 
 	-recurse    to look recursively through the directory structure
 	-quiet      to suppress the messages for files where no matching pattern was found
 	-header #   to view the first # (defaults to 500) characters of the file, when a match is found
-	-countonly  to provide the numeric results of matches found, but suppress the contextual matches found
+	-countonly  to provide the numeric results of matches found, suppressing the contextual matches
 	-long       to provide an 80 character prefix and suffix for contextual matching, instead of 40
 	-summary    to provide a numerical summary
 	-load       to load a regex string from the saved options in the find-in.txt file
 	-add        to save a new Regex pattern to the find-in.txt file
 	-remove     to remove a Regex pattern from the find-in.txt file
-	-viewer     to pass the files with matches to the internal artifact viewer interface, retaining the search terms
+	-viewer     to pass the files with matches to artifactviewer, retaining the search terms
 	-help       to display this screen
 	-modulehelp to display a helpscreen about the entire module
 	
-## getheader
+## GetHeader
 
 	Usage: getheader <file> <number of characters to view>
 	
 The default is set to 500 characters.
-# getline
+## GetLine
 
 	Usage: getline <file> <line number to view>
+## License
+MIT License
+
+Copyright © 2025 Craig Plath
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is 
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in 
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+THE SOFTWARE.
 ##>
