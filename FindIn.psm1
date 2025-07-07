@@ -47,9 +47,9 @@ if (-not $load -and -not $help -and -not $filepattern) {$help = $true}
 
 # Use one of the saved search patterns.
 if ($load) {$findinFile = "$PSScriptRoot\findin.txt"
-if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'find-in.txt' not found.`n"; return}
+if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'findin.txt' not found.`n"; return}
 $savedSearches = Get-Content $findinFile | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {$matchName = $matches[1]; $matchPattern = $matches[2]; [PSCustomObject]@{Name = $matchName; Pattern = $matchPattern}}
-if (-not $savedSearches) {Write-Host -f yellow "`nWarning: No valid searches found in 'find-in.txt'.`n"; return}
+if (-not $savedSearches) {Write-Host -f yellow "`nWarning: No valid searches found in 'findin.txt'.`n"; return}
 Write-Host -f yellow "`nSaved Searches:`n"
 for ($i=0; $i -lt $savedSearches.Count; $i++) {Write-Host -f cyan "$($i+1). $($savedSearches[$i].Name)"}
 $selection = Read-Host "`nEnter the number of the search to run"
@@ -59,31 +59,31 @@ else {Write-Host -f red "`nInvalid selection. Exiting.`n"; return}}
 else {Write-Host -f red "`nInvalid selection. Exiting.`n"; return}}
 
 # List the saved search patterns.
-if ($list) {$findinFile = "$PSScriptRoot\find-in.txt"
-if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'find-in.txt' not found.`n"; return}
+if ($list) {$findinFile = "$PSScriptRoot\findin.txt"
+if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'findin.txt' not found.`n"; return}
 $savedSearches = Get-Content $findinFile | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {[PSCustomObject]@{Name = $matches[1]; Pattern = $matches[2]}}
-if (-not $savedSearches) {Write-Host -f yellow "`nWarning: No valid searches found in 'find-in.txt'.`n"; ""; return}
+if (-not $savedSearches) {Write-Host -f yellow "`nWarning: No valid searches found in 'findin.txt'.`n"; ""; return}
 Write-Host -f yellow "`nSaved Searches:"
 foreach ($search in $savedSearches) {Write-Host -f cyan ($search.Name + ":").PadRight(30) -n; Write-Host -f white $search.Pattern}; ""; return}
 
 # Add a new saved search pattern.
-if ($add) {$findinFile = "$PSScriptRoot\find-in.txt"
+if ($add) {$findinFile = "$PSScriptRoot\findin.txt"
 $name = Read-Host "Enter a name for the search"; $pattern = Read-Host "Enter the regex pattern"
 if (-not $name -or -not $pattern) {Write-Host -f red "`nError: Both name and pattern are required.`n"; return}
 $safeName = $name -replace "'", "''"; $safePattern = $pattern -replace "'", "''"
 "'$safeName' '$safePattern'" | Add-Content -Encoding UTF8 -Path $findinFile
-Write-Host -f green "`nSaved '$name' to find-in.txt.`n"; return}
+Write-Host -f green "`nSaved '$name' to findin.txt.`n"; return}
 
 # Remove a saved search pattern.
-if ($remove) {$findinFile = "$PSScriptRoot\find-in.txt"
-if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'find-in.txt' not found.`n"; return}
+if ($remove) {$findinFile = "$PSScriptRoot\findin.txt"
+if (-not (Test-Path $findinFile)) {Write-Host -f red "`nError: Saved search file 'findin.txt' not found.`n"; return}
 $lines = [System.Collections.Generic.List[string]]@(Get-Content $findinFile); $entries = $lines | Where-Object {$_ -match "^\s*'(.+?)'\s+'(.+)'$"} | ForEach-Object {[PSCustomObject]@{Name = $matches[1]; Pattern = $matches[2]}}
-if (-not $entries) {Write-Host -f yellow "`nWarning: No valid searches found in 'find-in.txt'.`n"; return}
+if (-not $entries) {Write-Host -f yellow "`nWarning: No valid searches found in 'findin.txt'.`n"; return}
 Write-Host -f yellow "`nSaved Searches:`n"; for ($i = 0; $i -lt $entries.Count; $i++) {Write-Host -f cyan "$($i+1). $($entries[$i].Name.PadRight(30))" -n; Write-Host -f white $entries[$i].Pattern}
 $choice = Read-Host "`nEnter the number of the entry to remove"
 if ($choice -match '^\d+$' -and $choice -ge 1 -and $choice -le $entries.Count) {$index = 0; $lineIndexToRemove = -1
 foreach ($line in $lines) {if ($line -match "^\s*'(.+?)'\s+'(.+)'$") {if ($index -eq ($choice - 1)) {$lineIndexToRemove = [array]::IndexOf($lines, $line); break}; $index++}}
-if ($lineIndexToRemove -ge 0) {$lines.RemoveAt($lineIndexToRemove); Set-Content -Path $findinFile -Value $lines -Encoding UTF8; Write-Host -f green "`nRemoved '$($entries[$choice - 1].Name)' from find-in.txt.`n"}
+if ($lineIndexToRemove -ge 0) {$lines.RemoveAt($lineIndexToRemove); Set-Content -Path $findinFile -Value $lines -Encoding UTF8; Write-Host -f green "`nRemoved '$($entries[$choice - 1].Name)' from findin.txt.`n"}
 else {Write-Host -f red "`nError: Could not find the exact line to remove.`n"}}
 else {Write-Host -f red "`nInvalid selection. Exiting.`n"}; return}
 
@@ -95,9 +95,9 @@ Write-Host -f yellow "-header ##".PadRight(11) -n; Write-Host -f white " to view
 Write-Host -f yellow "-countonly".PadRight(11) -n; Write-Host -f white " to provide the numeric results of matches found, but suppress the contextual matches found"
 Write-Host -f yellow "-long".PadRight(11) -n; Write-Host -f white " to provide an 80 character prefix and suffix for contextual matching, instead of 40"
 Write-Host -f yellow "-summary".PadRight(11) -n; Write-Host -f white " to provide a numerical summary"
-Write-Host -f yellow "-load".PadRight(11) -n; Write-Host -f white " to load a regex string from the saved options in the find-in.txt file"
-Write-Host -f yellow "-add".PadRight(11) -n; Write-Host -f white " to save a new Regex pattern to the find-in.txt file"
-Write-Host -f yellow "-remove".PadRight(11) -n; Write-Host -f white " to remove a Regex pattern from the find-in.txt file"
+Write-Host -f yellow "-load".PadRight(11) -n; Write-Host -f white " to load a regex string from the saved options in the findin.txt file"
+Write-Host -f yellow "-add".PadRight(11) -n; Write-Host -f white " to save a new Regex pattern to the findin.txt file"
+Write-Host -f yellow "-remove".PadRight(11) -n; Write-Host -f white " to remove a Regex pattern from the findin.txt file"
 Write-Host -f yellow "-viewer".PadRight(11) -n; Write-Host -f white " to pass the files with matches to the internal artifact viewer interface, retaining the search terms"
 Write-Host -f yellow "-help".PadRight(11) -n; Write-Host -f white " to display this screen"
 Write-Host -f yellow "-modulehelp".PadRight(11) -n; Write-Host -f white " to display a helpscreen about the entire module`n"; return}
@@ -330,9 +330,9 @@ Exit Commands:
 	-countonly  to provide the numeric results of matches found, suppressing the contextual matches
 	-long       to provide an 80 character prefix and suffix for contextual matching, instead of 40
 	-summary    to provide a numerical summary
-	-load       to load a regex string from the saved options in the find-in.txt file
-	-add        to save a new Regex pattern to the find-in.txt file
-	-remove     to remove a Regex pattern from the find-in.txt file
+	-load       to load a regex string from the saved options in the findin.txt file
+	-add        to save a new Regex pattern to the findin.txt file
+	-remove     to remove a Regex pattern from the findin.txt file
 	-viewer     to pass the files with matches to artifactviewer, retaining the search terms
 	-help       to display this screen
 	-modulehelp to display a helpscreen about the entire module
