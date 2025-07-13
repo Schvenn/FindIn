@@ -1,5 +1,5 @@
 function findin {# Find strings in file patterns matching a regex pattern, recursively.
-param([string]$filePattern, [string]$script:string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help, [switch]$modulehelp)
+param([string]$filePattern, [string]$script:string, [switch]$recurse, [switch]$quiet, [switch]$countonly, [switch]$summary, [switch]$long, [switch]$load, [switch]$header, [int]$characters = 500, [switch]$viewer, [switch]$help)
 
 # Modify fields sent to it with proper word wrapping.
 function wordwrap ($field, $maximumlinelength) {if ($null -eq $field) {return $null}
@@ -26,24 +26,40 @@ $character = if ($double) {"="} else {"-"}
 Write-Host -f $colour ($character * $length)
 if ($post) {Write-Host ""}}
 
-if ($modulehelp) {# Inline help.
+function help {# Inline help.
 function scripthelp ($section) {# (Internal) Generate the help sections from the comments section of the script.
-""; Write-Host -f yellow ("-" * 100); $pattern = "(?ims)^## ($section.*?)(##|\z)"; $match = [regex]::Match($scripthelp, $pattern); $lines = $match.Groups[1].Value.TrimEnd() -split "`r?`n", 2; Write-Host $lines[0] -f yellow; Write-Host -f yellow ("-" * 100)
-if ($lines.Count -gt 1) {wordwrap $lines[1] 100| Out-String | Out-Host -Paging}; Write-Host -f yellow ("-" * 100)}
+line yellow 100 -pre; $pattern = "(?ims)^## ($section.*?)(##|\z)"; $match = [regex]::Match($scripthelp, $pattern); $lines = $match.Groups[1].Value.TrimEnd() -split "`r?`n", 2; Write-Host $lines[0] -f yellow; line yellow 100
+if ($lines.Count -gt 1) {wordwrap $lines[1] 100 | Write-Host -f white | Out-Host -Paging}; line yellow 100}
 $scripthelp = Get-Content -Raw -Path $PSCommandPath; $sections = [regex]::Matches($scripthelp, "(?im)^## (.+?)(?=\r?\n)")
 if ($sections.Count -eq 1) {cls; Write-Host "$([System.IO.Path]::GetFileNameWithoutExtension($PSCommandPath)) Help:" -f cyan; scripthelp $sections[0].Groups[1].Value; ""; return}
 
 $selection = $null
-do {cls; Write-Host "$([System.IO.Path]::GetFileNameWithoutExtension($PSCommandPath)) Help Sections:`n" -f cyan; for ($i = 0; $i -lt $sections.Count; $i++) {
-"{0}: {1}" -f ($i + 1), $sections[$i].Groups[1].Value}
+do {cls; Write-Host -f cyan "$(Get-ChildItem (Split-Path $PSCommandPath) | Where-Object { $_.FullName -ieq $PSCommandPath } | Select-Object -ExpandProperty BaseName) Help Sections:`n"
+for ($i = 0; $i -lt $sections.Count; $i++) {Write-Host "$($i + 1). " -f cyan -n; Write-Host $sections[$i].Groups[1].Value -f white}
 if ($selection) {scripthelp $sections[$selection - 1].Groups[1].Value}
-$input = Read-Host "`nEnter a section number to view"
+Write-Host -f yellow "`nEnter a section number to view " -n; $input = Read-Host
 if ($input -match '^\d+$') {$index = [int]$input
 if ($index -ge 1 -and $index -le $sections.Count) {$selection = $index}
 else {$selection = $null}} else {""; return}}
 while ($true); return}
 
-if (-not $load -and -not $help -and -not $filepattern) {$help = $true}
+# External call to help.
+if ($help) {help; return}
+
+# Display usage screen.
+if (-not $load -and -not $help -and -not $filepattern) {Write-Host -f white "`nUsage: " -n; Write-Host -f yellow "findin `"Regex file pattern`" `"Regex string pattern`" -recurse -quiet -countonly -long -summary -load -list -add -remove -help`n"
+Write-Host -f yellow "-recurse".PadRight(11) -n; Write-Host -f white " to look recursively through the directory structure"
+Write-Host -f yellow "-quiet".PadRight(11) -n; Write-Host -f white " to suppress the messages for files where no matching pattern was found"
+Write-Host -f yellow "-header ##".PadRight(11) -n; Write-Host -f white " to view the first ## (defaults to 500) characters of the file, when a match is found"
+Write-Host -f yellow "-countonly".PadRight(11) -n; Write-Host -f white " to provide the numeric results of matches found, but suppress the contextual matches found"
+Write-Host -f yellow "-long".PadRight(11) -n; Write-Host -f white " to provide an 80 character prefix and suffix for contextual matching, instead of 40"
+Write-Host -f yellow "-summary".PadRight(11) -n; Write-Host -f white " to provide a numerical summary"
+Write-Host -f yellow "-load".PadRight(11) -n; Write-Host -f white " to load a regex string from the saved options in the findin.txt file"
+Write-Host -f yellow "-add".PadRight(11) -n; Write-Host -f white " to save a new Regex pattern to the findin.txt file"
+Write-Host -f yellow "-remove".PadRight(11) -n; Write-Host -f white " to remove a Regex pattern from the findin.txt file"
+Write-Host -f yellow "-viewer".PadRight(11) -n; Write-Host -f white " to pass the files with matches to the internal artifact viewer interface, retaining the search terms"
+Write-Host -f yellow "-help".PadRight(11) -n; Write-Host -f white " to display this screen"
+Write-Host -f yellow "-modulehelp".PadRight(11) -n; Write-Host -f white " to display a helpscreen about the entire module`n"; return}
 
 # Use one of the saved search patterns.
 if ($load) {$findinFile = "$PSScriptRoot\findin.txt"
@@ -86,21 +102,6 @@ foreach ($line in $lines) {if ($line -match "^\s*'(.+?)'\s+'(.+)'$") {if ($index
 if ($lineIndexToRemove -ge 0) {$lines.RemoveAt($lineIndexToRemove); Set-Content -Path $findinFile -Value $lines -Encoding UTF8; Write-Host -f green "`nRemoved '$($entries[$choice - 1].Name)' from findin.txt.`n"}
 else {Write-Host -f red "`nError: Could not find the exact line to remove.`n"}}
 else {Write-Host -f red "`nInvalid selection. Exiting.`n"}; return}
-
-# Display the help screen.
-if ($help) {Write-Host -f white "`nUsage: " -n; Write-Host -f yellow "findin `"Regex file pattern`" `"Regex string pattern`" -recurse -quiet -countonly -long -summary -load -list -add -remove -help`n"
-Write-Host -f yellow "-recurse".PadRight(11) -n; Write-Host -f white " to look recursively through the directory structure"
-Write-Host -f yellow "-quiet".PadRight(11) -n; Write-Host -f white " to suppress the messages for files where no matching pattern was found"
-Write-Host -f yellow "-header ##".PadRight(11) -n; Write-Host -f white " to view the first ## (defaults to 500) characters of the file, when a match is found"
-Write-Host -f yellow "-countonly".PadRight(11) -n; Write-Host -f white " to provide the numeric results of matches found, but suppress the contextual matches found"
-Write-Host -f yellow "-long".PadRight(11) -n; Write-Host -f white " to provide an 80 character prefix and suffix for contextual matching, instead of 40"
-Write-Host -f yellow "-summary".PadRight(11) -n; Write-Host -f white " to provide a numerical summary"
-Write-Host -f yellow "-load".PadRight(11) -n; Write-Host -f white " to load a regex string from the saved options in the findin.txt file"
-Write-Host -f yellow "-add".PadRight(11) -n; Write-Host -f white " to save a new Regex pattern to the findin.txt file"
-Write-Host -f yellow "-remove".PadRight(11) -n; Write-Host -f white " to remove a Regex pattern from the findin.txt file"
-Write-Host -f yellow "-viewer".PadRight(11) -n; Write-Host -f white " to pass the files with matches to the internal artifact viewer interface, retaining the search terms"
-Write-Host -f yellow "-help".PadRight(11) -n; Write-Host -f white " to display this screen"
-Write-Host -f yellow "-modulehelp".PadRight(11) -n; Write-Host -f white " to display a helpscreen about the entire module`n"; return}
 
 $base=Split-Path $filePattern -Parent; if (!$base) {$base="."; $filePattern=(Split-Path $filePattern -Leaf)}; $files=Get-ChildItem -Path $base -File -Recurse:($recurse.IsPresent) -ErrorAction SilentlyContinue | Where-Object {$_.Name -match $filePattern}; $totalMatches=0; $filesChecked=0; $context=if ($long) {80} else {40}; ""
 
@@ -321,7 +322,6 @@ Exit Commands:
 	[M]enu to open the file selection menu
 	[Q]uit
 ## FindIn
-
 	Usage: findin "Regex file pattern" "Regex string pattern" -recurse -quiet -countonly -long -summary -load -list -add -remove -help
 
 	-recurse    to look recursively through the directory structure
@@ -338,12 +338,10 @@ Exit Commands:
 	-modulehelp to display a helpscreen about the entire module
 	
 ## GetHeader
-
 	Usage: getheader <file> <number of characters to view>
 	
 The default is set to 500 characters.
 ## GetLine
-
 	Usage: getline <file> <line number to view>
 ## License
 MIT License
