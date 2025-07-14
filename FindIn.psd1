@@ -11,6 +11,7 @@ CmdletsToExport = @()
 VariablesToExport = @()
 AliasesToExport = @('header')
 FileList = @('Findin.psm1', 'FindIn.txt')
+
 PrivateData = @{PSData = @{Tags = @('artifact','find','gzip','log','regex','search','viewer','security','forensics','cybersecurity','SOC')
 LicenseUri = 'https://github.com/Schvenn/FindIn/blob/main/LICENSE'
 ProjectUri = 'https://github.com/Schvenn/FindIn'
