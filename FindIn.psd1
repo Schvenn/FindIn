@@ -1,5 +1,4 @@
-@{
-RootModule = 'Findin.psm1'
+@{RootModule = 'Findin.psm1'
 ModuleVersion = '3.2'
 GUID = '2bfb6cfc-8c62-4e9f-9f1b-2e5c61709a6e'
 Author = 'Schvenn'
@@ -11,11 +10,8 @@ FunctionsToExport = @('findin','getheader','getline')
 CmdletsToExport = @()
 VariablesToExport = @()
 AliasesToExport = @('header')
-FileList = @('Findin.psm1', 'license.txt', 'findin.txt')
-PrivateData = @{
-PSData = @{
-Tags = @('artifact','find','gzip','log','regex','search','viewer','security','forensics','cybersecurity','SOC')
-LicenseUri = 'https://github.com/Schvenn/FindIn/blob/main/License.txt'
+FileList = @('Findin.psm1', 'FindIn.txt')
+PrivateData = @{PSData = @{Tags = @('artifact','find','gzip','log','regex','search','viewer','security','forensics','cybersecurity','SOC')
+LicenseUri = 'https://github.com/Schvenn/FindIn/blob/main/LICENSE'
 ProjectUri = 'https://github.com/Schvenn/FindIn'
-ReleaseNotes = 'Initial PowerShell gallery release. Advanced search utility, includes full integration with artifactviewer and pattern loading system.'
-}}}
+ReleaseNotes = 'Initial PowerShell gallery release. Advanced search utility, includes full integration with artifactviewer and pattern loading system.'}}}
